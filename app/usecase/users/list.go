@@ -1,9 +1,9 @@
-package usecase
+package users
 
 import (
 	"context"
-	"ginredis/app/repositories"
 	"ginredis/app/entities"
+	"ginredis/app/repositories"
 	"ginredis/response"
 )
 
@@ -34,7 +34,7 @@ func NewListUsecase(userRepo repositories.IUser) ListUsecase {
 }
 
 func (uc *listUsecase) Execute(ctx context.Context, filter ListRequest) (*ListResponse, error) {
-	users, pagination, err := uc.userRepo.ListUsers(ctx, repositories.UserFilter{
+	users, pagination, err := uc.userRepo.List(ctx, repositories.UserFilter{
 		Page:  filter.Page,
 		Limit: filter.Limit,
 		Name:  filter.Name,

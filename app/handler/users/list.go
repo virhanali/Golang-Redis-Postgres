@@ -1,7 +1,7 @@
-package handler
+package users
 
 import (
-	"ginredis/app/usecase"
+	"ginredis/app/usecase/users"
 	"ginredis/response"
 	"net/http"
 	"strconv"
@@ -10,10 +10,10 @@ import (
 )
 
 type ListHandler struct {
-	userUsecase usecase.ListUsecase
+	userUsecase users.ListUsecase
 }
 
-func NewListHandler(userUsecase usecase.ListUsecase) *ListHandler {
+func NewListHandler(userUsecase users.ListUsecase) *ListHandler {
 	return &ListHandler{
 		userUsecase: userUsecase,
 	}
@@ -24,7 +24,7 @@ func (h *ListHandler) Execute(ctx *gin.Context) {
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
 	name := ctx.Query("name")
 
-	filter := usecase.ListRequest{
+	filter := users.ListRequest{
 		Page:  page,
 		Limit: limit,
 		Name:  name,

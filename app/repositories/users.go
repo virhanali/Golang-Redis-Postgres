@@ -2,13 +2,10 @@ package repositories
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"ginredis/app/entities"
 	"ginredis/response"
-	"log"
 	"strings"
-	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
@@ -19,7 +16,7 @@ type users struct {
 	redis    *redis.Client
 }
 
-func NewListRepository(db *sqlx.DB, redis *redis.Client) IUser {
+func NewRepository(db *sqlx.DB, redis *redis.Client) IUser {
 	return &users{
 		postgres: db,
 		redis:    redis,
@@ -33,7 +30,7 @@ type UserFilter struct {
 	Name string
 }
 
-func (r *users) ListUsers(ctx context.Context, filter UserFilter) ([]entities.Users, *response.MetaTpl, error) {
+func (r *users) List(ctx context.Context, filter UserFilter) ([]entities.Users, *response.MetaTpl, error) {
 	var (
 		conditions []string
 		values     []interface{}
@@ -76,27 +73,33 @@ func (r *users) ListUsers(ctx context.Context, filter UserFilter) ([]entities.Us
 		entities.Users
 	}
 
-	cacheKey := fmt.Sprintf("data users:%d:%d", limit, offset)
-	cachedData, err := r.redis.Get(ctx, cacheKey).Result()
-	if err == nil {
-		err = json.Unmarshal([]byte(cachedData), &result)
-		if err != nil {
-			return nil, nil, err
-		}
-	} else {
-		err := r.postgres.SelectContext(ctx, &result, query, values...)
-		if err != nil {
-			return nil, nil, err
-		}
+	// all data will be cached in Redis
+	// cacheKey := fmt.Sprintf("users:%d", filter.Limit)
+	// cachedData, err := r.redis.Get(ctx, cacheKey).Result()
+	// if err == nil {
+	// 	err = json.Unmarshal([]byte(cachedData), &result)
+	// 	if err != nil {
+	// 		return nil, nil, err
+	// 	}
+	// } else {
+	// 	err := r.postgres.SelectContext(ctx, &result, query, values...)
+	// 	if err != nil {
+	// 		return nil, nil, err
+	// 	}
 
-		// Save the data to Redis cache
-		cachedData, err := json.Marshal(result)
-		if err == nil {
-			err = r.redis.Set(ctx, cacheKey, cachedData, 30*time.Second).Err()
-			if err != nil {
-				log.Println("Failed to save data to Redis cache:", err)
-			}
-		}
+	// 	// Save the data to Redis cache
+	// 	cachedData, err := json.Marshal(result)
+	// 	if err == nil {
+	// 		err = r.redis.Set(ctx, cacheKey, cachedData, 100*time.Second).Err()
+	// 		if err != nil {
+	// 			log.Println("Failed to save data to Redis cache:", err)
+	// 		}
+	// 	}
+	// }
+
+	err := r.postgres.SelectContext(ctx, &result, query, values...)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	users := make([]entities.Users, len(result))
@@ -115,4 +118,18 @@ func (r *users) ListUsers(ctx context.Context, filter UserFilter) ([]entities.Us
 	pagination.TotalData = result[0].Total
 
 	return users, pagination, nil
+}
+
+func (r *users) Get(ctx context.Context, id int) (entities.Users, error) {
+	var result entities.Users
+
+	query := `SELECT id, name, password, email FROM users WHERE id = ?`
+	query = r.postgres.Rebind(query)
+
+	err := r.postgres.GetContext(ctx, &result, query, id)
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
 }

@@ -1,24 +1,32 @@
 package handler
 
 import (
+	"ginredis/app/handler/users"
 	"ginredis/app/repositories"
-	"ginredis/app/usecase"
+	userUseCase "ginredis/app/usecase/users"
+
 	"ginredis/db"
 )
 
 type Container struct {
-	UserHandler *ListHandler
+	ListUserHandler *users.ListHandler
+	GetUserHandler  *users.DetailHandler
 }
 
 func NewContainer() *Container {
 	postgresDB := db.GetPostgresDB()
 	redis := db.GetRedisDB()
 
-	userRepo := repositories.NewListRepository(postgresDB, redis)
-	userUseCase := usecase.NewListUsecase(userRepo)
-	userHandler := NewListHandler(userUseCase)
+	userRepo := repositories.NewRepository(postgresDB, redis)
+	
+	listuserUseCase := userUseCase.NewListUsecase(userRepo)
+	listuserHandler := users.NewListHandler(listuserUseCase)
+
+	getuserUseCase := userUseCase.NewDetailUsecase(userRepo)
+	getuserHandler := users.NewDetailHandler(getuserUseCase)
 
 	return &Container{
-		UserHandler: userHandler,
+		ListUserHandler: listuserHandler,
+		GetUserHandler:  getuserHandler,
 	}
 }
